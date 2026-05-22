@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
-import { completeTodoistTask, createTodoistTask } from '@/lib/todoist'
+import {
+  completeTodoistTask,
+  createTodoistTask,
+  TODOIST_PROJECT_ID,
+  FREQUENCY_DUE_MAP,
+} from '@/lib/todoist'
 
 interface SyncBody {
   habitId: string
-  action: 'complete' | 'create'
+  action: 'link' | 'complete' | 'unlink'
 }
 
 export async function POST(req: NextRequest) {
@@ -14,7 +19,6 @@ export async function POST(req: NextRequest) {
 
     const supabase = createServerClient()
 
-    // Get the authorization header to identify the user
     const authHeader = req.headers.get('authorization')
     if (!authHeader) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -26,7 +30,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Fetch profile for Todoist token
+    // Fetch Todoist token from profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('todoist_access_token')
@@ -42,7 +46,7 @@ export async function POST(req: NextRequest) {
     // Fetch habit
     const { data: habit, error: habitError } = await supabase
       .from('habits')
-      .select('id, title, todoist_task_id')
+      .select('id, title, frequency, todoist_task_id, todoist_sync_enabled')
       .eq('id', habitId)
       .eq('user_id', user.id)
       .single()
@@ -51,6 +55,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Habit not found' }, { status: 404 })
     }
 
+    // ── link: create recurring task in project ───────────────────────────────
+    if (action === 'link') {
+      const dueString = FREQUENCY_DUE_MAP[habit.frequency as string] ?? 'every day'
+      const task = await createTodoistTask(todoistToken, habit.title as string, {
+        projectId: TODOIST_PROJECT_ID,
+        dueString,
+      })
+      await supabase
+        .from('habits')
+        .update({ todoist_task_id: task.id, todoist_sync_enabled: true })
+        .eq('id', habitId)
+      return NextResponse.json({ success: true, action: 'link', taskId: task.id })
+    }
+
+    // ── complete: close task in Todoist ──────────────────────────────────────
     if (action === 'complete') {
       const taskId = habit.todoist_task_id as string | null
       if (!taskId) {
@@ -60,14 +79,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, action: 'complete' })
     }
 
-    if (action === 'create') {
-      const task = await createTodoistTask(todoistToken, habit.title as string)
-      // Update habit with the new task id
+    // ── unlink: remove reference, stop syncing ───────────────────────────────
+    if (action === 'unlink') {
       await supabase
         .from('habits')
-        .update({ todoist_task_id: task.id })
+        .update({ todoist_task_id: null, todoist_sync_enabled: false })
         .eq('id', habitId)
-      return NextResponse.json({ success: true, action: 'create', taskId: task.id })
+      return NextResponse.json({ success: true, action: 'unlink' })
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
