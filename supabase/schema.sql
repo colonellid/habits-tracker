@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS public.habits (
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   order_index INTEGER NOT NULL DEFAULT 0,
   todoist_task_id TEXT,
+  todoist_sync_enabled BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

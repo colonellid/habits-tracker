@@ -3,11 +3,10 @@
 import { useState, useMemo } from 'react'
 import { useHabits } from '@/hooks/useHabits'
 import { useTracking } from '@/hooks/useTracking'
-import { useProfile } from '@/hooks/useProfile'
 import { TrackingModal } from '@/components/tracking/TrackingModal'
-import { Toast } from '@/components/ui/Toast'
+import { Toast } from '@/components/ui'
 import { isCompleted, formatValue } from '@/lib/metrics'
-import { supabase } from '@/lib/supabase'
+import { syncTodoistTask } from '@/lib/todoist-sync'
 import type { Habit, TrackingValue } from '@/types'
 
 function toDateString(date: Date): string {
@@ -33,27 +32,6 @@ function formatDateLabel(dateStr: string): string {
   return d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
-// ─── Todoist silent sync ───────────────────────────────────────────────────────
-
-async function syncTodoistComplete(habitId: string) {
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.access_token) return
-    await fetch('/api/todoist/sync', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ habitId, action: 'complete' }),
-    })
-  } catch {
-    // silent — do not block UX
-  }
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
 export default function TrackingPage() {
   const today = toDateString(new Date())
   const [selectedDate, setSelectedDate] = useState(today)
@@ -62,11 +40,9 @@ export default function TrackingPage() {
 
   const { data: habits = [], isLoading: habitsLoading } = useHabits()
   const { data: entries = [], isLoading: trackingLoading, track } = useTracking(selectedDate)
-  const { profile } = useProfile()
 
   const activeHabits = useMemo(() => habits.filter((h) => h.is_active), [habits])
 
-  // Group habits by area
   const grouped = useMemo(() => {
     const withArea: Map<string, { areaName: string; areaColor: string; habits: Habit[] }> = new Map()
     const noArea: Habit[] = []
@@ -100,24 +76,19 @@ export default function TrackingPage() {
   const isLoading = habitsLoading || trackingLoading
 
   async function handleSave(habitId: string, value: TrackingValue, notes?: string) {
-    try {
-      await track.mutateAsync({
-        habit_id: habitId,
-        tracked_date: selectedDate,
-        value,
-        notes: notes ?? null,
-      })
-      setToast({ message: 'Hábito registrado!', type: 'success' })
+    await track.mutateAsync({
+      habit_id: habitId,
+      tracked_date: selectedDate,
+      value,
+      notes: notes ?? null,
+    })
 
-      // Todoist sync: if user has token and habit has a task linked
-      if (profile?.todoist_access_token && isCompleted(value)) {
-        const habit = habits.find((h) => h.id === habitId)
-        if (habit?.todoist_task_id) {
-          syncTodoistComplete(habitId)
-        }
-      }
-    } catch {
-      setToast({ message: 'Erro ao salvar. Tente novamente.', type: 'error' })
+    // Sync with Todoist if habit has sync enabled and value is completed
+    const habit = activeHabits.find((h) => h.id === habitId)
+    if (habit?.todoist_sync_enabled && habit?.todoist_task_id && isCompleted(value)) {
+      syncTodoistTask(habitId, 'complete').catch(() => {
+        // fire-and-forget: Todoist errors don't block the UI
+      })
     }
   }
 
@@ -173,7 +144,7 @@ export default function TrackingPage() {
             </p>
             <div className="mt-2 h-1.5 rounded-full bg-todoist-gray-200 overflow-hidden">
               <div
-                className="h-full bg-todoist-green rounded-full transition-all duration-500"
+                className="h-full bg-todoist-green rounded-full transition-all"
                 style={{ width: activeHabits.length > 0 ? `${(completedCount / activeHabits.length) * 100}%` : '0%' }}
               />
             </div>
@@ -224,9 +195,8 @@ export default function TrackingPage() {
                 <button
                   key={habit.id}
                   onClick={() => setModalHabit(habit)}
-                  className={`card flex items-center gap-3 text-left hover:shadow-lg transition-all w-full ${done ? 'opacity-80' : ''}`}
+                  className="card flex items-center gap-3 text-left hover:shadow-lg transition-shadow w-full"
                 >
-                  {/* Status indicator */}
                   <span
                     className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
                       done
@@ -253,6 +223,14 @@ export default function TrackingPage() {
                   </div>
 
                   <div className="flex-shrink-0 flex items-center gap-2">
+                    {habit.todoist_sync_enabled && (
+                      <span
+                        className="text-[9px] font-bold px-1 py-0.5 rounded bg-todoist-red text-white"
+                        title="Sincronizado com Todoist"
+                      >
+                        T
+                      </span>
+                    )}
                     <span
                       className="w-2 h-2 rounded-full"
                       style={{ backgroundColor: habit.color }}
@@ -266,7 +244,6 @@ export default function TrackingPage() {
         </div>
       ))}
 
-      {/* Tracking Modal */}
       <TrackingModal
         habit={modalHabit}
         open={modalHabit !== null}
@@ -276,13 +253,8 @@ export default function TrackingPage() {
         existingNotes={modalEntry?.notes ?? undefined}
       />
 
-      {/* Toast */}
       {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
     </main>
   )

@@ -1,11 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useHabits } from '@/hooks/useHabits'
 import { useAreas } from '@/hooks/useAreas'
 import { useObjectives } from '@/hooks/useObjectives'
-import { Button, Badge, Modal, ConfirmModal } from '@/components/ui'
+import { useProfile } from '@/hooks/useProfile'
+import { Button, Badge, Modal, ConfirmModal, Toast } from '@/components/ui'
 import { HabitForm } from '@/components/habits/HabitForm'
+import { syncTodoistTask } from '@/lib/todoist-sync'
 import type { Habit } from '@/types'
 import type { HabitInput } from '@/lib/validators'
 
@@ -17,14 +20,60 @@ const FREQ_LABELS: Record<string, string> = {
   daily: 'Diário', weekly: 'Semanal', monthly: 'Mensal', custom: 'Personalizado',
 }
 
+interface ToastState { message: string; type: 'success' | 'error' }
+
+function TodoistToggle({
+  habit,
+  connected,
+  onToggle,
+  loading,
+}: {
+  habit: Habit
+  connected: boolean
+  onToggle: (habit: Habit) => void
+  loading: boolean
+}) {
+  if (!connected) return null
+  const enabled = habit.todoist_sync_enabled
+
+  return (
+    <button
+      onClick={() => onToggle(habit)}
+      disabled={loading}
+      title={enabled ? 'Desativar sincronização Todoist' : 'Ativar sincronização Todoist'}
+      className={`relative w-8 h-4 rounded-full transition-colors disabled:opacity-50 ${
+        enabled ? 'bg-todoist-red' : 'bg-todoist-gray-300'
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform flex items-center justify-center ${
+          enabled ? 'translate-x-4' : 'translate-x-0'
+        }`}
+      />
+      {loading && (
+        <span className="absolute inset-0 flex items-center justify-center">
+          <span className="w-2.5 h-2.5 border border-white border-t-transparent rounded-full animate-spin" />
+        </span>
+      )}
+    </button>
+  )
+}
+
 export default function HabitsPage() {
+  const qc = useQueryClient()
   const { data: habits = [], isLoading, create, update, remove } = useHabits()
   const { data: areas = [] } = useAreas()
   const { data: objectives = [] } = useObjectives()
+  const { profile } = useProfile()
+
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<Habit | null>(null)
   const [deleting, setDeleting] = useState<Habit | null>(null)
   const [filterArea, setFilterArea] = useState<string>('all')
+  const [todoistLoading, setTodoistLoading] = useState<Record<string, boolean>>({})
+  const [toast, setToast] = useState<ToastState | null>(null)
+
+  const todoistConnected = !!(profile?.todoist_access_token)
 
   const filtered = filterArea === 'all'
     ? habits
@@ -80,12 +129,36 @@ export default function HabitsPage() {
     await update.mutateAsync({ id: habit.id, is_active: !habit.is_active })
   }
 
+  async function handleTodoistToggle(habit: Habit) {
+    const action = habit.todoist_sync_enabled ? 'unlink' : 'link'
+    setTodoistLoading((prev) => ({ ...prev, [habit.id]: true }))
+    try {
+      await syncTodoistTask(habit.id, action)
+      await qc.invalidateQueries({ queryKey: ['habits'] })
+      setToast({
+        message: action === 'link'
+          ? `"${habit.title}" vinculado ao Todoist!`
+          : 'Sincronização desativada.',
+        type: 'success',
+      })
+    } catch (err) {
+      setToast({
+        message: err instanceof Error ? err.message : 'Erro na integração Todoist.',
+        type: 'error',
+      })
+    } finally {
+      setTodoistLoading((prev) => ({ ...prev, [habit.id]: false }))
+    }
+  }
+
   return (
     <main className="p-4 md:p-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-semibold text-todoist-charcoal">Hábitos</h1>
-          <p className="text-sm text-todoist-gray-500 mt-0.5">{habits.length} hábito{habits.length !== 1 ? 's' : ''} cadastrado{habits.length !== 1 ? 's' : ''}</p>
+          <p className="text-sm text-todoist-gray-500 mt-0.5">
+            {habits.length} hábito{habits.length !== 1 ? 's' : ''} cadastrado{habits.length !== 1 ? 's' : ''}
+          </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>+ Novo hábito</Button>
       </div>
@@ -120,6 +193,14 @@ export default function HabitsPage() {
         </div>
       )}
 
+      {/* Legenda Todoist (só mostra se conectado) */}
+      {todoistConnected && (
+        <div className="flex items-center gap-2 mb-3 text-xs text-todoist-gray-500">
+          <span className="w-6 h-3 rounded-full bg-todoist-red inline-block opacity-70" />
+          <span>Sincronizar com Todoist (projeto Hábitos)</span>
+        </div>
+      )}
+
       {isLoading && (
         <div className="flex flex-col gap-2">
           {[1, 2, 3, 4].map((i) => (
@@ -145,6 +226,7 @@ export default function HabitsPage() {
         <div className="flex flex-col gap-2">
           {filtered.map((habit) => {
             const area = areas.find((a) => a.id === habit.area_id)
+            const isTodoistLoading = todoistLoading[habit.id] ?? false
             return (
               <div
                 key={habit.id}
@@ -158,7 +240,17 @@ export default function HabitsPage() {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-todoist-charcoal truncate">{habit.title}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-medium text-todoist-charcoal truncate">{habit.title}</p>
+                    {habit.todoist_sync_enabled && habit.todoist_task_id && (
+                      <span
+                        className="text-[9px] font-bold px-1 py-0.5 rounded bg-todoist-red text-white flex-shrink-0"
+                        title="Sincronizado com Todoist"
+                      >
+                        T
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     <Badge variant="default">{METRIC_LABELS[habit.metric_type]}</Badge>
                     <Badge variant="info">{FREQ_LABELS[habit.frequency]}</Badge>
@@ -168,13 +260,26 @@ export default function HabitsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Todoist sync toggle */}
+                  {todoistConnected && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px] text-todoist-gray-400 font-medium">T</span>
+                      <TodoistToggle
+                        habit={habit}
+                        connected={todoistConnected}
+                        onToggle={handleTodoistToggle}
+                        loading={isTodoistLoading}
+                      />
+                    </div>
+                  )}
+
                   {/* Toggle ativo */}
                   <button
                     onClick={() => toggleActive(habit)}
                     title={habit.is_active ? 'Desativar' : 'Ativar'}
                     className={`relative w-8 h-4 rounded-full transition-colors ${
-                      habit.is_active ? 'bg-todoist-red' : 'bg-todoist-gray-300'
+                      habit.is_active ? 'bg-todoist-green' : 'bg-todoist-gray-300'
                     }`}
                   >
                     <span
@@ -183,6 +288,7 @@ export default function HabitsPage() {
                       }`}
                     />
                   </button>
+
                   <button
                     onClick={() => setEditing(habit)}
                     className="p-1.5 rounded text-todoist-gray-400 hover:text-todoist-charcoal hover:bg-todoist-gray-100 transition-colors"
@@ -227,6 +333,10 @@ export default function HabitsPage() {
         message={`Tem certeza que quer deletar "${deleting?.title}"? O histórico de rastreamento também será removido.`}
         loading={remove.isPending}
       />
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+      )}
     </main>
   )
 }

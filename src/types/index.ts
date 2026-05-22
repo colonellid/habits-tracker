@@ -80,18 +80,20 @@ export interface Habit {
   is_active: boolean
   order_index: number
   todoist_task_id: string | null
+  todoist_sync_enabled: boolean
   created_at: string
   updated_at: string
   area?: Area
   objective?: Objective
 }
 
-export type HabitCreate = Omit<Habit, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'area' | 'objective' | 'description' | 'icon' | 'area_id' | 'objective_id' | 'todoist_task_id'> & {
+export type HabitCreate = Omit<Habit, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'area' | 'objective' | 'description' | 'icon' | 'area_id' | 'objective_id' | 'todoist_task_id' | 'todoist_sync_enabled'> & {
   description?: string | null
   icon?: string | null
   area_id?: string | null
   objective_id?: string | null
   todoist_task_id?: string | null
+  todoist_sync_enabled?: boolean
 }
 export type HabitUpdate = Partial<HabitCreate>
 

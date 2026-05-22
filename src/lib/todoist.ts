@@ -1,5 +1,14 @@
 const TODOIST_API = 'https://api.todoist.com/rest/v2'
 
+export const TODOIST_PROJECT_ID = '6ggqcHVjWJXfMCwq'
+
+export const FREQUENCY_DUE_MAP: Record<string, string> = {
+  daily: 'every day',
+  weekly: 'every week',
+  monthly: 'every month',
+  custom: 'every day',
+}
+
 export interface TodoistProject {
   id: string
   name: string
@@ -52,11 +61,15 @@ export async function getTodoistTasks(token: string, projectId?: string): Promis
 export async function createTodoistTask(
   token: string,
   content: string,
-  projectId?: string
+  options?: { projectId?: string; dueString?: string }
 ): Promise<TodoistTask> {
   return todoistFetch<TodoistTask>(token, '/tasks', {
     method: 'POST',
-    body: JSON.stringify({ content, ...(projectId ? { project_id: projectId } : {}) }),
+    body: JSON.stringify({
+      content,
+      ...(options?.projectId ? { project_id: options.projectId } : {}),
+      ...(options?.dueString ? { due_string: options.dueString } : {}),
+    }),
   })
 }
 
