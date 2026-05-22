@@ -18,7 +18,7 @@ export const areaSchema = z.object({
   description: z.string().max(500).optional().nullable(),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   icon: z.string().max(10).optional().nullable(),
-  is_active: z.boolean().default(true),
+  is_active: z.boolean(),
 })
 
 export const objectiveSchema = z.object({
@@ -26,7 +26,7 @@ export const objectiveSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(1000).optional().nullable(),
   target_date: z.string().optional().nullable(),
-  status: z.enum(['active', 'completed', 'paused']).default('active'),
+  status: z.enum(['active', 'completed', 'paused']),
   color: z.string().regex(/^#[0-9a-fA-F]{6}/),
 })
 
@@ -36,13 +36,13 @@ export const habitSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(1000).optional().nullable(),
   metric_type: z.enum(['binary', 'quantity', 'duration', 'rating', 'checklist', 'note']),
-  metric_config: z.record(z.unknown()).default({}),
-  frequency: z.enum(['daily', 'weekly', 'monthly', 'custom']).default('daily'),
-  frequency_config: z.record(z.unknown()).default({}),
+  metric_config: z.record(z.unknown()),
+  frequency: z.enum(['daily', 'weekly', 'monthly', 'custom']),
+  frequency_config: z.record(z.unknown()),
   color: z.string().regex(/^#[0-9a-fA-F]{6}/),
   icon: z.string().max(10).optional().nullable(),
-  is_active: z.boolean().default(true),
-  order_index: z.number().int().default(0),
+  is_active: z.boolean(),
+  order_index: z.number().int(),
 })
 
 export const trackingSchema = z.object({

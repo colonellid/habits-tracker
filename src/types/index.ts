@@ -23,7 +23,10 @@ export interface Area {
   updated_at: string
 }
 
-export type AreaCreate = Omit<Area, 'id' | 'user_id' | 'created_at' | 'updated_at'>
+export type AreaCreate = Omit<Area, 'id' | 'user_id' | 'created_at' | 'updated_at'> & {
+  description?: string | null
+  icon?: string | null
+}
 export type AreaUpdate = Partial<AreaCreate>
 
 // ─── Objectives ──────────────────────────────────────────────────────────────
@@ -42,7 +45,11 @@ export interface Objective {
   area?: Area
 }
 
-export type ObjectiveCreate = Omit<Objective, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'area'>
+export type ObjectiveCreate = Omit<Objective, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'area' | 'description' | 'target_date' | 'area_id'> & {
+  description?: string | null
+  target_date?: string | null
+  area_id?: string | null
+}
 export type ObjectiveUpdate = Partial<ObjectiveCreate>
 
 // ─── Habits ──────────────────────────────────────────────────────────────────
@@ -79,7 +86,13 @@ export interface Habit {
   objective?: Objective
 }
 
-export type HabitCreate = Omit<Habit, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'area' | 'objective'>
+export type HabitCreate = Omit<Habit, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'area' | 'objective' | 'description' | 'icon' | 'area_id' | 'objective_id' | 'todoist_task_id'> & {
+  description?: string | null
+  icon?: string | null
+  area_id?: string | null
+  objective_id?: string | null
+  todoist_task_id?: string | null
+}
 export type HabitUpdate = Partial<HabitCreate>
 
 // ─── Tracking ─────────────────────────────────────────────────────────────────
