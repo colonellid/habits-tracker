@@ -1,10 +1,25 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { createServerClient } from '@supabase/auth-helpers-nextjs'
 
 const PUBLIC_PATHS = ['/login', '/signup']
 
+const hasSupabase =
+  !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  process.env.NEXT_PUBLIC_SUPABASE_URL !== 'https://placeholder.supabase.co'
+
 export async function middleware(req: NextRequest) {
+  const isPublic = PUBLIC_PATHS.some((p) => req.nextUrl.pathname.startsWith(p))
+
+  // Dev bypass: sem credenciais Supabase, libera todas as rotas
+  if (!hasSupabase) {
+    if (isPublic) {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
+    return NextResponse.next()
+  }
+
+  // Produção / dev com Supabase configurado
+  const { createServerClient } = await import('@supabase/auth-helpers-nextjs')
   const res = NextResponse.next()
 
   const supabase = createServerClient(
@@ -14,8 +29,6 @@ export async function middleware(req: NextRequest) {
   )
 
   const { data: { session } } = await supabase.auth.getSession()
-
-  const isPublic = PUBLIC_PATHS.some((p) => req.nextUrl.pathname.startsWith(p))
 
   if (!session && !isPublic) {
     return NextResponse.redirect(new URL('/login', req.url))
