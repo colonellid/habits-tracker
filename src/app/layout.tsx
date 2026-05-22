@@ -1,0 +1,15 @@
+import type { Metadata } from 'next'
+import '@/styles/globals.css'
+
+export const metadata: Metadata = {
+  title: 'Habits Tracker',
+  description: 'Personal habit tracking with Todoist integration',
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  )
+}

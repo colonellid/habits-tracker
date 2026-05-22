@@ -1,0 +1,33 @@
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/auth-helpers-nextjs'
+
+const PUBLIC_PATHS = ['/login', '/signup']
+
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next()
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => req.cookies.getAll(), setAll: () => {} } }
+  )
+
+  const { data: { session } } = await supabase.auth.getSession()
+
+  const isPublic = PUBLIC_PATHS.some((p) => req.nextUrl.pathname.startsWith(p))
+
+  if (!session && !isPublic) {
+    return NextResponse.redirect(new URL('/login', req.url))
+  }
+
+  if (session && isPublic) {
+    return NextResponse.redirect(new URL('/dashboard', req.url))
+  }
+
+  return res
+}
+
+export const config = {
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+}

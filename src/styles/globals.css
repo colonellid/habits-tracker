@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --color-bg: #fefdfc;
+  --color-text: #25221e;
+  --color-primary: #e34432;
+  --color-primary-hover: #c0392b;
+  --color-border: #e0ddd8;
+  --color-sidebar: #1f1c19;
+  --radius-default: 8px;
+  --radius-button: 15px;
+  --radius-badge: 6px;
+  --radius-card: 10px;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 600;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed;
+    border-radius: var(--radius-button);
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+
+  .btn-primary {
+    @apply btn bg-todoist-red text-white hover:bg-todoist-red-dark focus:ring-todoist-red;
+  }
+
+  .btn-secondary {
+    @apply btn bg-todoist-gray-200 text-todoist-charcoal hover:bg-todoist-gray-300 focus:ring-todoist-gray-400;
+  }
+
+  .btn-tertiary {
+    @apply btn border border-todoist-gray-300 bg-transparent text-todoist-charcoal hover:bg-todoist-gray-100 focus:ring-todoist-gray-300;
+  }
+
+  .btn-text {
+    @apply btn bg-transparent text-todoist-charcoal hover:bg-todoist-gray-100 focus:ring-todoist-gray-300;
+    padding: 6px 10px;
+  }
+
+  .card {
+    @apply bg-white border border-todoist-gray-200 shadow-subtle;
+    border-radius: var(--radius-card);
+    padding: 16px;
+  }
+
+  .input-field {
+    @apply w-full border border-todoist-gray-300 bg-white px-3 py-2 text-sm text-todoist-charcoal placeholder:text-todoist-gray-400 focus:outline-none focus:ring-2 focus:ring-todoist-red focus:border-transparent transition-colors;
+    border-radius: var(--radius-default);
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 text-xs font-medium;
+    border-radius: var(--radius-badge);
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer;
+  }
+
+  .sidebar-item-active {
+    @apply sidebar-item bg-todoist-sidebar-item text-white;
+  }
+
+  .sidebar-item-inactive {
+    @apply sidebar-item text-todoist-gray-400 hover:text-white hover:bg-todoist-sidebar-item;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+}
