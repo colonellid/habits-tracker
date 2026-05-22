@@ -1,43 +1,66 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import type { User as SupabaseUser } from '@supabase/supabase-js'
+import type { User, Session } from '@supabase/supabase-js'
+
+interface AuthState {
+  user: User | null
+  session: Session | null
+  loading: boolean
+}
 
 export function useAuth() {
-  const [user, setUser] = useState<SupabaseUser | null>(null)
-  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    session: null,
+    loading: true,
+  })
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
+      setState({ user: session?.user ?? null, session, loading: false })
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
+      setState({ user: session?.user ?? null, session, loading: false })
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
-  async function signIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const signIn = useCallback(async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw new Error(error.message)
-  }
+    return data
+  }, [])
 
-  async function signUp(email: string, password: string, name: string) {
-    const { error } = await supabase.auth.signUp({
+  const signUp = useCallback(async (email: string, password: string, name: string) => {
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { name } },
     })
     if (error) throw new Error(error.message)
-  }
+    return data
+  }, [])
 
-  async function signOut() {
+  const signOut = useCallback(async () => {
     await supabase.auth.signOut()
-  }
+    router.push('/login')
+  }, [router])
 
-  return { user, loading, signIn, signUp, signOut }
+  return {
+    user: state.user,
+    session: state.session,
+    loading: state.loading,
+    isAuthenticated: !!state.user,
+    signIn,
+    signUp,
+    signOut,
+    displayName: state.user?.user_metadata?.name ?? state.user?.email?.split('@')[0] ?? 'User',
+    avatarInitial: (state.user?.user_metadata?.name ?? state.user?.email ?? 'U')[0].toUpperCase(),
+  }
 }
