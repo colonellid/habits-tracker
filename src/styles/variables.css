@@ -1,0 +1,55 @@
+/* Todoist Design Tokens */
+:root {
+  /* Colours */
+  --todoist-charcoal: #25221e;
+  --todoist-paper: #fefdfc;
+  --todoist-red: #e34432;
+  --todoist-red-dark: #c0392b;
+  --todoist-red-light: #fdf2f1;
+  --todoist-blue: #246fe0;
+  --todoist-blue-light: #eef3fc;
+  --todoist-green: #058527;
+  --todoist-green-light: #e8f5e9;
+  --todoist-orange: #e57f1e;
+  --todoist-orange-light: #fff3e0;
+  --todoist-purple: #7c3aed;
+  --todoist-purple-light: #f5f3ff;
+
+  /* Greys */
+  --todoist-gray-100: #f9f9f7;
+  --todoist-gray-200: #f0eeeb;
+  --todoist-gray-300: #e0ddd8;
+  --todoist-gray-400: #b8b3ab;
+  --todoist-gray-500: #8a837a;
+  --todoist-gray-600: #5c5650;
+  --todoist-gray-700: #3d3933;
+
+  /* Sidebar */
+  --todoist-sidebar-bg: #1f1c19;
+  --todoist-sidebar-item: #302d29;
+
+  /* Typography */
+  --font-heading: 'Graphik', 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+
+  /* Spacing (base 4px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Border Radius */
+  --radius-default: 8px;
+  --radius-button: 15px;
+  --radius-badge: 6px;
+  --radius-card: 10px;
+
+  /* Shadows */
+  --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
