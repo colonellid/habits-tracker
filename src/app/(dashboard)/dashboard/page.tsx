@@ -3,14 +3,21 @@
 import { useMemo } from 'react'
 import { useHabits } from '@/hooks/useHabits'
 import { useTracking } from '@/hooks/useTracking'
+import { useTrackingRange } from '@/hooks/useTrackingRange'
 import { useAuth } from '@/hooks/useAuth'
 import { StatsRow } from '@/components/dashboard/StatsRow'
 import { TodayList } from '@/components/dashboard/TodayList'
 import type { HabitWithTracking, DashboardStats, TrackingValue } from '@/types'
 import { isCompleted } from '@/lib/metrics'
+import { calcStreak, calcCompletionRate } from '@/lib/streak'
 
 function todayString() {
   return new Date().toISOString().slice(0, 10)
+}
+
+function currentMonthStart() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
 }
 
 export default function DashboardPage() {
@@ -19,6 +26,13 @@ export default function DashboardPage() {
 
   const { data: habits = [], isLoading: habitsLoading } = useHabits()
   const { data: entries = [], track } = useTracking(today)
+  // Fetch last 30 days for streak + week/month stats
+  const { data: rangeEntries = [] } = useTrackingRange(30)
+
+  const activeHabitIds = useMemo(
+    () => habits.filter((h) => h.is_active).map((h) => h.id),
+    [habits]
+  )
 
   const habitsWithTracking = useMemo<HabitWithTracking[]>(() => {
     return habits
@@ -34,8 +48,19 @@ export default function DashboardPage() {
     const completed = habitsWithTracking.filter(
       (h) => h.todayEntry && isCompleted(h.todayEntry.value)
     ).length
-    return { todayTotal: total, todayCompleted: completed, streakDays: 0, weekCompletion: 0, monthCompletion: 0 }
-  }, [habitsWithTracking])
+
+    const streakDays = calcStreak(rangeEntries)
+    const weekCompletion = calcCompletionRate(rangeEntries, activeHabitIds, 7)
+
+    // Month completion: days elapsed so far this month
+    const now = new Date()
+    const dayOfMonth = now.getDate()
+    const monthStart = currentMonthStart()
+    const monthEntries = rangeEntries.filter((e) => e.tracked_date >= monthStart)
+    const monthCompletion = calcCompletionRate(monthEntries, activeHabitIds, dayOfMonth)
+
+    return { todayTotal: total, todayCompleted: completed, streakDays, weekCompletion, monthCompletion }
+  }, [habitsWithTracking, rangeEntries, activeHabitIds])
 
   async function handleTrack(habitId: string, value: TrackingValue, notes?: string) {
     await track.mutateAsync({ habit_id: habitId, tracked_date: today, value, notes: notes ?? null })

@@ -3,8 +3,11 @@
 import { useState, useMemo } from 'react'
 import { useHabits } from '@/hooks/useHabits'
 import { useTracking } from '@/hooks/useTracking'
+import { useProfile } from '@/hooks/useProfile'
 import { TrackingModal } from '@/components/tracking/TrackingModal'
+import { Toast } from '@/components/ui/Toast'
 import { isCompleted, formatValue } from '@/lib/metrics'
+import { supabase } from '@/lib/supabase'
 import type { Habit, TrackingValue } from '@/types'
 
 function toDateString(date: Date): string {
@@ -30,13 +33,36 @@ function formatDateLabel(dateStr: string): string {
   return d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
+// ─── Todoist silent sync ───────────────────────────────────────────────────────
+
+async function syncTodoistComplete(habitId: string) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) return
+    await fetch('/api/todoist/sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ habitId, action: 'complete' }),
+    })
+  } catch {
+    // silent — do not block UX
+  }
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function TrackingPage() {
   const today = toDateString(new Date())
   const [selectedDate, setSelectedDate] = useState(today)
   const [modalHabit, setModalHabit] = useState<Habit | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   const { data: habits = [], isLoading: habitsLoading } = useHabits()
   const { data: entries = [], isLoading: trackingLoading, track } = useTracking(selectedDate)
+  const { profile } = useProfile()
 
   const activeHabits = useMemo(() => habits.filter((h) => h.is_active), [habits])
 
@@ -74,12 +100,25 @@ export default function TrackingPage() {
   const isLoading = habitsLoading || trackingLoading
 
   async function handleSave(habitId: string, value: TrackingValue, notes?: string) {
-    await track.mutateAsync({
-      habit_id: habitId,
-      tracked_date: selectedDate,
-      value,
-      notes: notes ?? null,
-    })
+    try {
+      await track.mutateAsync({
+        habit_id: habitId,
+        tracked_date: selectedDate,
+        value,
+        notes: notes ?? null,
+      })
+      setToast({ message: 'Hábito registrado!', type: 'success' })
+
+      // Todoist sync: if user has token and habit has a task linked
+      if (profile?.todoist_access_token && isCompleted(value)) {
+        const habit = habits.find((h) => h.id === habitId)
+        if (habit?.todoist_task_id) {
+          syncTodoistComplete(habitId)
+        }
+      }
+    } catch {
+      setToast({ message: 'Erro ao salvar. Tente novamente.', type: 'error' })
+    }
   }
 
   const modalEntry = modalHabit ? entryMap.get(modalHabit.id) : undefined
@@ -134,7 +173,7 @@ export default function TrackingPage() {
             </p>
             <div className="mt-2 h-1.5 rounded-full bg-todoist-gray-200 overflow-hidden">
               <div
-                className="h-full bg-todoist-green rounded-full transition-all"
+                className="h-full bg-todoist-green rounded-full transition-all duration-500"
                 style={{ width: activeHabits.length > 0 ? `${(completedCount / activeHabits.length) * 100}%` : '0%' }}
               />
             </div>
@@ -185,7 +224,7 @@ export default function TrackingPage() {
                 <button
                   key={habit.id}
                   onClick={() => setModalHabit(habit)}
-                  className="card flex items-center gap-3 text-left hover:shadow-lg transition-shadow w-full"
+                  className={`card flex items-center gap-3 text-left hover:shadow-lg transition-all w-full ${done ? 'opacity-80' : ''}`}
                 >
                   {/* Status indicator */}
                   <span
@@ -236,6 +275,15 @@ export default function TrackingPage() {
         existingValue={modalEntry?.value}
         existingNotes={modalEntry?.notes ?? undefined}
       />
+
+      {/* Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </main>
   )
 }
