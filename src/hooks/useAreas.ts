@@ -1,28 +1,42 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import apiClient from '@/lib/api-client'
+import { supabase } from '@/lib/supabase'
 import type { Area, AreaCreate, AreaUpdate } from '@/types'
 
 const QK = ['areas']
 
 async function fetchAreas(): Promise<Area[]> {
-  const { data } = await apiClient.get<{ data: Area[] }>('/areas')
-  return data.data
+  const { data, error } = await supabase.from('areas').select('*').order('name')
+  if (error) throw new Error(error.message)
+  return data
 }
 
 async function createArea(payload: AreaCreate): Promise<Area> {
-  const { data } = await apiClient.post<{ data: Area }>('/areas', payload)
-  return data.data
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data, error } = await supabase
+    .from('areas')
+    .insert({ ...payload, user_id: user!.id })
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return data
 }
 
 async function updateArea({ id, ...payload }: AreaUpdate & { id: string }): Promise<Area> {
-  const { data } = await apiClient.patch<{ data: Area }>(`/areas/${id}`, payload)
-  return data.data
+  const { data, error } = await supabase
+    .from('areas')
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return data
 }
 
 async function deleteArea(id: string): Promise<void> {
-  await apiClient.delete(`/areas/${id}`)
+  const { error } = await supabase.from('areas').delete().eq('id', id)
+  if (error) throw new Error(error.message)
 }
 
 export function useAreas() {

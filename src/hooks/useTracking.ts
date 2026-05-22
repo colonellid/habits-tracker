@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import apiClient from '@/lib/api-client'
+import { supabase } from '@/lib/supabase'
 import type { TrackingEntry, TrackingCreate } from '@/types'
 
 function queryKey(date: string) {
@@ -9,13 +9,23 @@ function queryKey(date: string) {
 }
 
 async function fetchTrackingByDate(date: string): Promise<TrackingEntry[]> {
-  const { data } = await apiClient.get<{ data: TrackingEntry[] }>(`/tracking?date=${date}`)
-  return data.data
+  const { data, error } = await supabase
+    .from('tracking_entries')
+    .select('*, habit:habits(*)')
+    .eq('tracked_date', date)
+  if (error) throw new Error(error.message)
+  return data
 }
 
 async function upsertTracking(payload: TrackingCreate): Promise<TrackingEntry> {
-  const { data } = await apiClient.post<{ data: TrackingEntry }>('/tracking', payload)
-  return data.data
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data, error } = await supabase
+    .from('tracking_entries')
+    .upsert({ ...payload, user_id: user!.id }, { onConflict: 'habit_id,tracked_date' })
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return data
 }
 
 export function useTracking(date: string) {
