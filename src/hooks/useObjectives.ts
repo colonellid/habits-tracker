@@ -1,28 +1,45 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import apiClient from '@/lib/api-client'
+import { supabase } from '@/lib/supabase'
 import type { Objective, ObjectiveCreate, ObjectiveUpdate } from '@/types'
 
 const QK = ['objectives']
 
 async function fetchObjectives(): Promise<Objective[]> {
-  const { data } = await apiClient.get<{ data: Objective[] }>('/objectives')
-  return data.data
+  const { data, error } = await supabase
+    .from('objectives')
+    .select('*, area:areas(*)')
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(error.message)
+  return data
 }
 
 async function createObjective(payload: ObjectiveCreate): Promise<Objective> {
-  const { data } = await apiClient.post<{ data: Objective }>('/objectives', payload)
-  return data.data
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data, error } = await supabase
+    .from('objectives')
+    .insert({ ...payload, user_id: user!.id })
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return data
 }
 
 async function updateObjective({ id, ...payload }: ObjectiveUpdate & { id: string }): Promise<Objective> {
-  const { data } = await apiClient.patch<{ data: Objective }>(`/objectives/${id}`, payload)
-  return data.data
+  const { data, error } = await supabase
+    .from('objectives')
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return data
 }
 
 async function deleteObjective(id: string): Promise<void> {
-  await apiClient.delete(`/objectives/${id}`)
+  const { error } = await supabase.from('objectives').delete().eq('id', id)
+  if (error) throw new Error(error.message)
 }
 
 export function useObjectives() {
