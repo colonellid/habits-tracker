@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { CheckCircle2 } from 'lucide-react'
 import { Button, Input } from '@/components/ui'
 import { useAuth } from '@/hooks/useAuth'
 import { loginSchema, type LoginInput } from '@/lib/validators'
@@ -26,22 +27,26 @@ export function LoginForm() {
       await signIn(data.email, data.password)
       router.push('/dashboard')
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Login failed')
+      setServerError(err instanceof Error ? err.message : 'Falha ao entrar')
     }
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-      <div className="text-center mb-2">
-        <div className="w-10 h-10 bg-todoist-red rounded-xl flex items-center justify-center mx-auto mb-3">
-          <span className="text-white text-xl">✓</span>
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+      <div className="mb-2">
+        <div className="w-[52px] h-[52px] bg-action-red rounded-[13px] flex items-center justify-center mb-5 text-white">
+          <CheckCircle2 size={28} strokeWidth={2} />
         </div>
-        <h1 className="text-2xl font-semibold text-todoist-charcoal">Entrar</h1>
-        <p className="text-sm text-todoist-gray-500 mt-1">Continue rastreando seus hábitos</p>
+        <h1 className="font-display text-[32px] font-bold text-charcoal tracking-[-0.01em] leading-[1.15]">
+          Bem-vindo de volta.
+        </h1>
+        <p className="text-base text-subtle-ash mt-2">
+          Continue rastreando seus hábitos.
+        </p>
       </div>
 
       {serverError && (
-        <div className="bg-todoist-red-light border border-todoist-red/20 text-todoist-red text-sm rounded-lg px-3 py-2">
+        <div className="bg-tint-red border border-action-red/20 text-action-red text-sm rounded-default px-4 py-3">
           {serverError}
         </div>
       )}
@@ -55,22 +60,29 @@ export function LoginForm() {
         {...register('email')}
       />
 
-      <Input
-        label="Senha"
-        type="password"
-        placeholder="••••••••"
-        autoComplete="current-password"
-        error={errors.password?.message}
-        {...register('password')}
-      />
+      <div>
+        <Input
+          label="Senha"
+          type="password"
+          placeholder="••••••••"
+          autoComplete="current-password"
+          error={errors.password?.message}
+          {...register('password')}
+        />
+        <div className="text-right mt-1.5">
+          <Link href="/login" className="text-sm text-link-orange hover:underline">
+            Esqueceu a senha?
+          </Link>
+        </div>
+      </div>
 
-      <Button type="submit" loading={isSubmitting} className="w-full mt-1">
+      <Button type="submit" loading={isSubmitting} fullWidth size="md" className="!h-[50px] mt-2">
         Entrar
       </Button>
 
-      <p className="text-center text-sm text-todoist-gray-500">
-        Não tem conta?{' '}
-        <Link href="/signup" className="text-todoist-red hover:underline font-medium">
+      <p className="text-center text-sm text-subtle-ash">
+        Novo por aqui?{' '}
+        <Link href="/signup" className="text-link-orange hover:underline font-medium">
           Criar conta
         </Link>
       </p>

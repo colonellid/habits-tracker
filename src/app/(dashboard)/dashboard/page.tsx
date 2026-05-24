@@ -1,97 +1,186 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { Bell, Search } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useHabits } from '@/hooks/useHabits'
 import { useTracking } from '@/hooks/useTracking'
 import { useTrackingRange } from '@/hooks/useTrackingRange'
 import { useAuth } from '@/hooks/useAuth'
-import { StatsRow } from '@/components/dashboard/StatsRow'
-import { TodayList } from '@/components/dashboard/TodayList'
-import type { HabitWithTracking, DashboardStats, TrackingValue } from '@/types'
-import { isCompleted } from '@/lib/metrics'
-import { calcStreak, calcCompletionRate } from '@/lib/streak'
+import { IconButton, FAB } from '@/components/ui'
+import { WeekStrip } from '@/components/dashboard/WeekStrip'
+import { DailyProgress } from '@/components/dashboard/DailyProgress'
+import { HabitRow } from '@/components/habits/HabitRow'
+import { TrackingModal } from '@/components/tracking/TrackingModal'
+import { isCompleted, formatValue } from '@/lib/metrics'
+import { calcStreak } from '@/lib/streak'
+import type { Habit, TrackingValue } from '@/types'
 
-function todayString() {
-  return new Date().toISOString().slice(0, 10)
+function toDateString(d: Date) {
+  return d.toISOString().slice(0, 10)
 }
 
-function currentMonthStart() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+const MONTH_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+const WEEKDAY_PT = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
+
+function formatEyebrow(dateStr: string) {
+  const today = toDateString(new Date())
+  const d = new Date(dateStr + 'T00:00:00')
+  const isToday = dateStr === today
+  return `${isToday ? 'Hoje' : WEEKDAY_PT[d.getDay()]}, ${d.getDate()} ${MONTH_PT[d.getMonth()]}`
 }
 
 export default function DashboardPage() {
   const { displayName } = useAuth()
-  const today = todayString()
+  const router = useRouter()
+  const todayStr = toDateString(new Date())
+  const [selectedDate, setSelectedDate] = useState(todayStr)
+  const [modalHabit, setModalHabit] = useState<Habit | null>(null)
 
-  const { data: habits = [], isLoading: habitsLoading } = useHabits()
-  const { data: entries = [], track } = useTracking(today)
-  // Fetch last 30 days for streak + week/month stats
+  const { data: habits = [] } = useHabits()
+  const { data: entries = [], track } = useTracking(selectedDate)
   const { data: rangeEntries = [] } = useTrackingRange(30)
 
-  const activeHabitIds = useMemo(
-    () => habits.filter((h) => h.is_active).map((h) => h.id),
-    [habits]
-  )
+  const activeHabits = useMemo(() => habits.filter((h) => h.is_active), [habits])
 
-  const habitsWithTracking = useMemo<HabitWithTracking[]>(() => {
-    return habits
-      .filter((h) => h.is_active)
-      .map((habit) => {
-        const todayEntry = entries.find((e) => e.habit_id === habit.id)
-        return { ...habit, todayEntry, streakDays: 0, completionRate7d: 0 }
+  const habitState = useMemo(() => {
+    return activeHabits.map((habit) => {
+      const todayEntry = entries.find((e) => e.habit_id === habit.id)
+      const done = !!todayEntry && isCompleted(todayEntry.value)
+      const habitEntries = rangeEntries.filter((e) => e.habit_id === habit.id)
+      const streak = calcStreak(habitEntries)
+      const miniGrid: boolean[] = Array.from({ length: 30 }, (_, i) => {
+        const d = new Date()
+        d.setDate(d.getDate() - (29 - i))
+        const ds = toDateString(d)
+        const e = habitEntries.find((x) => x.tracked_date === ds)
+        return !!e && isCompleted(e.value)
       })
-  }, [habits, entries])
+      const subtitle = todayEntry ? formatValue(todayEntry.value) : undefined
+      return { habit, done, streak, miniGrid, subtitle }
+    })
+  }, [activeHabits, entries, rangeEntries])
 
-  const stats = useMemo<DashboardStats>(() => {
-    const total = habitsWithTracking.length
-    const completed = habitsWithTracking.filter(
-      (h) => h.todayEntry && isCompleted(h.todayEntry.value)
-    ).length
+  const pending = habitState.filter((h) => !h.done)
+  const done = habitState.filter((h) => h.done)
 
-    const streakDays = calcStreak(rangeEntries)
-    const weekCompletion = calcCompletionRate(rangeEntries, activeHabitIds, 7)
+  async function handleQuickCheck(habit: Habit) {
+    if (habit.metric_type === 'binary') {
+      const value: TrackingValue = { type: 'binary', completed: true }
+      await track.mutateAsync({
+        habit_id: habit.id,
+        tracked_date: selectedDate,
+        value,
+        notes: null,
+      })
+    } else {
+      setModalHabit(habit)
+    }
+  }
 
-    // Month completion: days elapsed so far this month
-    const now = new Date()
-    const dayOfMonth = now.getDate()
-    const monthStart = currentMonthStart()
-    const monthEntries = rangeEntries.filter((e) => e.tracked_date >= monthStart)
-    const monthCompletion = calcCompletionRate(monthEntries, activeHabitIds, dayOfMonth)
-
-    return { todayTotal: total, todayCompleted: completed, streakDays, weekCompletion, monthCompletion }
-  }, [habitsWithTracking, rangeEntries, activeHabitIds])
-
-  async function handleTrack(habitId: string, value: TrackingValue, notes?: string) {
-    await track.mutateAsync({ habit_id: habitId, tracked_date: today, value, notes: notes ?? null })
+  async function handleSave(habitId: string, value: TrackingValue, notes?: string) {
+    await track.mutateAsync({
+      habit_id: habitId,
+      tracked_date: selectedDate,
+      value,
+      notes: notes ?? null,
+    })
   }
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'
+  const firstName = displayName.split(' ')[0]
+
+  const modalEntry = modalHabit
+    ? entries.find((e) => e.habit_id === modalHabit.id)
+    : undefined
 
   return (
-    <main className="p-4 md:p-6 max-w-2xl mx-auto">
-      <div className="mb-5">
-        <h1 className="text-2xl font-semibold text-todoist-charcoal">
-          {greeting}, {displayName.split(' ')[0]} 👋
-        </h1>
-        <p className="text-sm text-todoist-gray-500 mt-0.5">
-          {new Date().toLocaleDateString('pt-BR', {
-            weekday: 'long', day: 'numeric', month: 'long',
-          })}
-        </p>
-      </div>
+    <main className="p-4 md:p-6 max-w-2xl mx-auto pb-32">
+      <header className="flex items-start justify-between mb-5">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-subtle-ash mb-1">{formatEyebrow(selectedDate)}</p>
+          <h1 className="font-display text-3xl font-bold text-charcoal tracking-[-0.005em] truncate">
+            {greeting}, {firstName}.
+          </h1>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 ml-3">
+          <IconButton aria-label="Notificações" variant="muted">
+            <Bell size={18} />
+          </IconButton>
+          <IconButton aria-label="Buscar" variant="muted">
+            <Search size={18} />
+          </IconButton>
+        </div>
+      </header>
 
-      <div className="mb-5">
-        <StatsRow stats={stats} />
-      </div>
+      <WeekStrip selectedDate={selectedDate} onSelect={setSelectedDate} />
 
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-todoist-charcoal">Hábitos de hoje</h2>
-        <a href="/habits" className="text-xs text-todoist-red hover:underline">Gerenciar</a>
-      </div>
+      <DailyProgress done={done.length} total={habitState.length} />
 
-      <TodayList habits={habitsWithTracking} onTrack={handleTrack} loading={habitsLoading} />
+      {pending.length > 0 && (
+        <section className="mb-5">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-subtle-ash mb-2.5">
+            Pendentes · {pending.length}
+          </h2>
+          <div className="flex flex-col gap-2.5">
+            {pending.map(({ habit, done, streak, miniGrid, subtitle }) => (
+              <HabitRow
+                key={habit.id}
+                habit={habit}
+                done={done}
+                streak={streak}
+                miniGridData={miniGrid}
+                subtitle={subtitle}
+                onClick={() => setModalHabit(habit)}
+                onCheck={() => handleQuickCheck(habit)}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {done.length > 0 && (
+        <section className="mb-5">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-subtle-ash mb-2.5">
+            Concluídos · {done.length}
+          </h2>
+          <div className="flex flex-col gap-2.5">
+            {done.map(({ habit, done, streak, miniGrid, subtitle }) => (
+              <HabitRow
+                key={habit.id}
+                habit={habit}
+                done={done}
+                streak={streak}
+                miniGridData={miniGrid}
+                subtitle={subtitle}
+                onClick={() => setModalHabit(habit)}
+                onCheck={() => handleQuickCheck(habit)}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {habitState.length === 0 && (
+        <div className="text-center py-12 px-6 border border-dashed border-soft-gray rounded-card">
+          <p className="text-sm text-subtle-ash mb-3">Nenhum hábito ativo ainda.</p>
+          <a href="/habits" className="text-link-orange text-sm font-medium hover:underline">
+            Criar primeiro hábito →
+          </a>
+        </div>
+      )}
+
+      <FAB aria-label="Novo hábito" onClick={() => router.push('/habits')} />
+
+      <TrackingModal
+        habit={modalHabit}
+        open={modalHabit !== null}
+        onClose={() => setModalHabit(null)}
+        onSave={handleSave}
+        existingValue={modalEntry?.value}
+        existingNotes={modalEntry?.notes ?? undefined}
+      />
     </main>
   )
 }

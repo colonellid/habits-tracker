@@ -2,33 +2,40 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Home, BarChart3, MoreHorizontal, type LucideIcon } from 'lucide-react'
 
-const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Today', icon: '☀️' },
-  { href: '/tracking', label: 'Track', icon: '✅' },
-  { href: '/habits', label: 'Habits', icon: '🔄' },
-  { href: '/insights', label: 'Insights', icon: '📊' },
-  { href: '/settings', label: 'Settings', icon: '⚙️' },
+interface NavItem {
+  href: string
+  label: string
+  Icon: LucideIcon
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { href: '/dashboard', label: 'Hoje', Icon: Home },
+  { href: '/insights', label: 'Estatísticas', Icon: BarChart3 },
+  { href: '/settings', label: 'Mais', Icon: MoreHorizontal },
 ]
 
 export function BottomNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-todoist-paper border-t border-todoist-gray-200">
-      <div className="flex">
-        {NAV_ITEMS.map((item) => {
-          const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-paper border-t border-soft-gray">
+      <div className="flex h-[60px]">
+        {NAV_ITEMS.map(({ href, label, Icon }) => {
+          const active =
+            pathname === href ||
+            (href !== '/dashboard' && pathname.startsWith(href))
           return (
             <Link
-              key={item.href}
-              href={item.href}
-              className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors ${
-                active ? 'text-todoist-red' : 'text-todoist-gray-400 hover:text-todoist-charcoal'
+              key={href}
+              href={href}
+              className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors duration-150 ${
+                active ? 'text-action-red' : 'text-subtle-ash hover:text-charcoal'
               }`}
             >
-              <span className="text-lg leading-none">{item.icon}</span>
-              <span>{item.label}</span>
+              <Icon size={22} strokeWidth={active ? 2 : 1.5} />
+              <span className="text-[10px] font-semibold">{label}</span>
             </Link>
           )
         })}
