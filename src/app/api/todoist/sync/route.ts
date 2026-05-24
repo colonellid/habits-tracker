@@ -46,13 +46,16 @@ export async function POST(req: NextRequest) {
     // Fetch habit
     const { data: habit, error: habitError } = await supabase
       .from('habits')
-      .select('id, title, frequency, todoist_task_id, todoist_sync_enabled')
+      .select('id, title, frequency, todoist_task_id')
       .eq('id', habitId)
       .eq('user_id', user.id)
       .single()
 
     if (habitError || !habit) {
-      return NextResponse.json({ error: 'Habit not found' }, { status: 404 })
+      return NextResponse.json(
+        { error: habitError?.message ?? 'Habit not found' },
+        { status: 404 }
+      )
     }
 
     // ── link: create recurring task in project ───────────────────────────────
