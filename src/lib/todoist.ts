@@ -33,7 +33,8 @@ async function todoistFetch<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const res = await fetch(`${TODOIST_API}${path}`, {
+  const url = `${TODOIST_API}${path}`
+  const res = await fetch(url, {
     ...options,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -43,7 +44,7 @@ async function todoistFetch<T>(
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`Todoist API error ${res.status}: ${text}`)
+    throw new Error(`Todoist ${res.status} [${options.method ?? 'GET'} ${url}]: ${text}`)
   }
   if (res.status === 204) return undefined as unknown as T
   return res.json() as Promise<T>
@@ -74,5 +75,8 @@ export async function createTodoistTask(
 }
 
 export async function completeTodoistTask(token: string, taskId: string): Promise<void> {
-  return todoistFetch<void>(token, `/tasks/${taskId}/close`, { method: 'POST' })
+  return todoistFetch<void>(token, `/tasks/${taskId}/close`, {
+    method: 'POST',
+    body: '{}',
+  })
 }
