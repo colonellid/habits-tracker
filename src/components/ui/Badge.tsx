@@ -7,15 +7,19 @@ interface BadgeProps {
 }
 
 const variantClasses: Record<BadgeVariant, string> = {
-  default: 'bg-todoist-gray-200 text-todoist-gray-700',
-  success: 'bg-todoist-green-light text-todoist-green',
-  warning: 'bg-todoist-orange-light text-todoist-orange',
-  error: 'bg-todoist-red-light text-todoist-red',
-  info: 'bg-todoist-blue-light text-todoist-blue',
+  default: 'bg-[rgba(37,34,30,0.07)] text-charcoal',
+  success: 'bg-light-green-tint text-badge-green',
+  warning: 'bg-tint-orange text-link-orange',
+  error: 'bg-tint-red text-action-red',
+  info: 'bg-tint-blue text-accent-blue',
 }
 
 export function Badge({ children, variant = 'default', className = '' }: BadgeProps) {
   return (
-    <span className={`badge ${variantClasses[variant]} ${className}`}>{children}</span>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-badge text-xs font-medium ${variantClasses[variant]} ${className}`}
+    >
+      {children}
+    </span>
   )
 }

@@ -2,17 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
+  /* Design tokens (Todoist DS v1.0) */
+  --color-paper: #fefdfc;
+  --color-charcoal: #25221e;
+  --color-action-red: #e34432;
+  --color-cta-hover: #d13d2a;
+  --color-soft-gray: #d7d6d4;
+  --color-subtle-ash: #6f6c69;
+  --color-dusty-sage: #94928f;
+  --color-peach: #fff6f0;
+
+  /* Legacy aliases */
   --color-bg: #fefdfc;
   --color-text: #25221e;
   --color-primary: #e34432;
-  --color-primary-hover: #c0392b;
-  --color-border: #e0ddd8;
+  --color-primary-hover: #d13d2a;
+  --color-border: #d7d6d4;
   --color-sidebar: #1f1c19;
+
   --radius-default: 8px;
   --radius-button: 15px;
+  --radius-btn: 15px;
   --radius-badge: 6px;
   --radius-card: 10px;
 }
@@ -27,55 +40,81 @@
   html {
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    background-color: var(--color-bg);
-    color: var(--color-text);
-    font-size: 14px;
-    line-height: 1.5;
+    background-color: var(--color-paper);
+    color: var(--color-charcoal);
+    font-size: 15px;
+    line-height: 1.45;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Inter', system-ui, sans-serif;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: -0.005em;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--color-action-red);
+    outline-offset: 2px;
+  }
+
+  button:focus-visible {
+    outline: none;
   }
 }
 
 @layer components {
+  /* ─── Legacy utility classes (telas em migração) ─────────────── */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed;
-    border-radius: var(--radius-button);
+    @apply inline-flex items-center justify-center gap-2 font-medium transition-all duration-150 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed;
+    border-radius: var(--radius-btn);
     padding: 8px 16px;
     font-size: 14px;
   }
 
   .btn-primary {
-    @apply btn bg-todoist-red text-white hover:bg-todoist-red-dark focus:ring-todoist-red;
+    @apply btn bg-action-red text-white hover:bg-cta-hover;
   }
 
   .btn-secondary {
-    @apply btn bg-todoist-gray-200 text-todoist-charcoal hover:bg-todoist-gray-300 focus:ring-todoist-gray-400;
+    @apply btn text-charcoal;
+    background-color: rgba(37, 34, 30, 0.07);
+  }
+  .btn-secondary:hover {
+    background-color: rgba(37, 34, 30, 0.12);
   }
 
   .btn-tertiary {
-    @apply btn border border-todoist-gray-300 bg-transparent text-todoist-charcoal hover:bg-todoist-gray-100 focus:ring-todoist-gray-300;
+    @apply btn border border-soft-gray bg-transparent text-charcoal;
+  }
+  .btn-tertiary:hover {
+    background-color: rgba(37, 34, 30, 0.04);
   }
 
   .btn-text {
-    @apply btn bg-transparent text-todoist-charcoal hover:bg-todoist-gray-100 focus:ring-todoist-gray-300;
+    @apply btn bg-transparent text-charcoal;
     padding: 6px 10px;
+  }
+  .btn-text:hover {
+    background-color: rgba(37, 34, 30, 0.07);
   }
 
   .card {
-    @apply bg-white border border-todoist-gray-200 shadow-subtle;
+    @apply bg-paper border border-soft-gray;
     border-radius: var(--radius-card);
     padding: 16px;
   }
 
   .input-field {
-    @apply w-full border border-todoist-gray-300 bg-white px-3 py-2 text-sm text-todoist-charcoal placeholder:text-todoist-gray-400 focus:outline-none focus:ring-2 focus:ring-todoist-red focus:border-transparent transition-colors;
+    @apply w-full bg-paper border border-soft-gray px-4 py-3 text-base text-charcoal placeholder:text-dusty-sage transition-all duration-150 ease-out focus:outline-none;
     border-radius: var(--radius-default);
+  }
+  .input-field:focus {
+    border-color: var(--color-action-red);
+    box-shadow: 0 0 0 3px rgba(227, 68, 50, 0.08);
   }
 
   .badge {
@@ -99,13 +138,4 @@
 @layer utilities {
   .scrollbar-hide::-webkit-scrollbar { display: none; }
   .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-}
-
-@keyframes toast-in {
-  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
-
-.animate-toast-in {
-  animation: toast-in 0.2s ease-out forwards;
 }
