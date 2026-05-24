@@ -85,10 +85,15 @@ export default function TrackingPage() {
 
     // Sync with Todoist if habit has sync enabled and value is completed
     const habit = activeHabits.find((h) => h.id === habitId)
-    if (habit?.todoist_sync_enabled && habit?.todoist_task_id && isCompleted(value)) {
-      syncTodoistTask(habitId, 'complete').catch(() => {
-        // fire-and-forget: Todoist errors don't block the UI
-      })
+    if (habit?.todoist_sync_enabled && isCompleted(value)) {
+      if (!habit.todoist_task_id) {
+        setToast({ message: 'Hábito vinculado ao Todoist mas sem ID de tarefa. Desvincule e vincule novamente.', type: 'error' })
+      } else {
+        syncTodoistTask(habitId, 'complete').catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : 'Erro desconhecido'
+          setToast({ message: `Todoist: ${msg}`, type: 'error' })
+        })
+      }
     }
   }
 
