@@ -35,14 +35,14 @@ export function WeekStrip({ selectedDate, onSelect }: WeekStripProps) {
   })
 
   return (
-    <div className="flex gap-1 mb-5" role="tablist" aria-label="Selecionar dia">
+    <div className="flex gap-0.5 mb-4" role="tablist" aria-label="Selecionar dia">
       {days.map((day) => (
         <button
           key={day.date}
           role="tab"
           aria-selected={day.isSelected}
           onClick={() => onSelect(day.date)}
-          className={`flex-1 flex flex-col items-center gap-1 py-1.5 rounded-default transition-all duration-150 ease-out relative ${
+          className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-default transition-all duration-150 ease-out relative ${
             day.isSelected
               ? 'bg-charcoal text-paper'
               : 'text-charcoal hover:bg-[rgba(37,34,30,0.05)]'

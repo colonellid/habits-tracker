@@ -96,11 +96,11 @@ export default function DashboardPage() {
     : undefined
 
   return (
-    <main className="p-4 md:p-6 max-w-2xl mx-auto pb-32">
-      <header className="flex items-start justify-between mb-5">
+    <main className="p-3 md:p-6 max-w-2xl mx-auto pb-28">
+      <header className="flex items-start justify-between mb-4">
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-subtle-ash mb-1">{formatEyebrow(selectedDate)}</p>
-          <h1 className="font-display text-3xl font-bold text-charcoal tracking-[-0.005em] truncate">
+          <p className="text-xs text-subtle-ash mb-0.5">{formatEyebrow(selectedDate)}</p>
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-charcoal tracking-[-0.005em] truncate">
             {greeting}, {firstName}.
           </h1>
         </div>
@@ -119,11 +119,11 @@ export default function DashboardPage() {
       <DailyProgress done={done.length} total={habitState.length} />
 
       {pending.length > 0 && (
-        <section className="mb-5">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-subtle-ash mb-2.5">
+        <section className="mb-4">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-subtle-ash mb-2">
             Pendentes · {pending.length}
           </h2>
-          <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-2">
             {pending.map(({ habit, done, streak, miniGrid, subtitle }) => (
               <HabitRow
                 key={habit.id}
@@ -141,11 +141,11 @@ export default function DashboardPage() {
       )}
 
       {done.length > 0 && (
-        <section className="mb-5">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-subtle-ash mb-2.5">
+        <section className="mb-4">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-subtle-ash mb-2">
             Concluídos · {done.length}
           </h2>
-          <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-2">
             {done.map(({ habit, done, streak, miniGrid, subtitle }) => (
               <HabitRow
                 key={habit.id}

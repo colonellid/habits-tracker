@@ -29,7 +29,7 @@ export function HabitRow({
 
   return (
     <div
-      className="bg-paper border border-soft-gray rounded-[12px] p-4 hover:border-[rgba(37,34,30,0.2)] transition-colors duration-150 cursor-pointer"
+      className="bg-paper border border-soft-gray rounded-[12px] p-3 md:p-4 hover:border-[rgba(37,34,30,0.2)] transition-colors duration-150 cursor-pointer"
       onClick={onClick}
     >
       <div className="flex items-center gap-3">

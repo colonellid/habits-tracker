@@ -8,7 +8,7 @@ export function DailyProgress({ done, total, label = 'HOJE' }: DailyProgressProp
   const pct = total > 0 ? Math.round((done / total) * 100) : 0
 
   return (
-    <div className="bg-peach rounded-[12px] px-4 py-3.5 flex items-center gap-4 mb-5">
+    <div className="bg-peach rounded-[12px] px-4 py-3 flex items-center gap-4 mb-4">
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-subtle-ash mb-1">
           {label}

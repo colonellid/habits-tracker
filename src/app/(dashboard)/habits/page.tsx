@@ -9,7 +9,7 @@ import { useObjectives } from '@/hooks/useObjectives'
 import { useProfile } from '@/hooks/useProfile'
 import {
   Badge,
-  Modal,
+  BottomSheet,
   ConfirmModal,
   Toast,
   Toggle,
@@ -265,16 +265,16 @@ export default function HabitsPage() {
         </div>
       )}
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Novo hábito" size="lg">
+      <BottomSheet open={createOpen} onClose={() => setCreateOpen(false)} title="Novo hábito">
         <HabitForm
           areas={areas}
           objectives={objectives}
           onSubmit={handleCreate}
           loading={create.isPending}
         />
-      </Modal>
+      </BottomSheet>
 
-      <Modal open={!!editing} onClose={() => setEditing(null)} title="Editar hábito" size="lg">
+      <BottomSheet open={!!editing} onClose={() => setEditing(null)} title="Editar hábito">
         {editing && (
           <HabitForm
             areas={areas}
@@ -284,7 +284,7 @@ export default function HabitsPage() {
             loading={update.isPending}
           />
         )}
-      </Modal>
+      </BottomSheet>
 
       <ConfirmModal
         open={!!deleting}
