@@ -7,13 +7,14 @@ import { useHabits } from '@/hooks/useHabits'
 import { useTracking } from '@/hooks/useTracking'
 import { useTrackingRange } from '@/hooks/useTrackingRange'
 import { useAuth } from '@/hooks/useAuth'
-import { IconButton, FAB } from '@/components/ui'
+import { IconButton, FAB, Toast } from '@/components/ui'
 import { WeekStrip } from '@/components/dashboard/WeekStrip'
 import { DailyProgress } from '@/components/dashboard/DailyProgress'
 import { HabitRow } from '@/components/habits/HabitRow'
 import { TrackingModal } from '@/components/tracking/TrackingModal'
 import { isCompleted, formatValue } from '@/lib/metrics'
 import { calcStreak } from '@/lib/streak'
+import { syncTodoistTask } from '@/lib/todoist-sync'
 import type { Habit, TrackingValue } from '@/types'
 
 function toDateString(d: Date) {
@@ -36,6 +37,7 @@ export default function DashboardPage() {
   const todayStr = toDateString(new Date())
   const [selectedDate, setSelectedDate] = useState(todayStr)
   const [modalHabit, setModalHabit] = useState<Habit | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   const { data: habits = [] } = useHabits()
   const { data: entries = [], track } = useTracking(selectedDate)
@@ -64,6 +66,18 @@ export default function DashboardPage() {
   const pending = habitState.filter((h) => !h.done)
   const done = habitState.filter((h) => h.done)
 
+  function triggerTodoistSync(habit: Habit, value: TrackingValue) {
+    if (!habit.todoist_sync_enabled || !isCompleted(value)) return
+    if (!habit.todoist_task_id) {
+      setToast({ message: 'Hábito vinculado ao Todoist mas sem ID. Desvincule e vincule novamente.', type: 'error' })
+      return
+    }
+    syncTodoistTask(habit.id, 'complete').catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Erro desconhecido'
+      setToast({ message: `Todoist: ${msg}`, type: 'error' })
+    })
+  }
+
   async function handleQuickCheck(habit: Habit) {
     if (habit.metric_type === 'binary') {
       const value: TrackingValue = { type: 'binary', completed: true }
@@ -73,6 +87,7 @@ export default function DashboardPage() {
         value,
         notes: null,
       })
+      triggerTodoistSync(habit, value)
     } else {
       setModalHabit(habit)
     }
@@ -85,6 +100,8 @@ export default function DashboardPage() {
       value,
       notes: notes ?? null,
     })
+    const habit = activeHabits.find((h) => h.id === habitId)
+    if (habit) triggerTodoistSync(habit, value)
   }
 
   const hour = new Date().getHours()
@@ -181,6 +198,10 @@ export default function DashboardPage() {
         existingValue={modalEntry?.value}
         existingNotes={modalEntry?.notes ?? undefined}
       />
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+      )}
     </main>
   )
 }
