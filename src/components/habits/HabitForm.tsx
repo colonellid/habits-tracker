@@ -3,10 +3,16 @@
 import { useForm, Controller, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { habitSchema, type HabitInput } from '@/lib/validators'
-import { Input, Button, ColorPicker } from '@/components/ui'
+import { Input, Button, Select, Toggle } from '@/components/ui'
+import { HabitIcon, HABIT_ICON_OPTIONS } from '@/components/habits/HabitIcon'
 import type { Area, Objective } from '@/types'
 
-const EMOJI_LIST = ['🏋️', '📚', '🧘', '🍎', '💡', '🎵', '🌿', '💼', '🎯', '⚡', '❤️', '🌍', '🧠', '💰', '🎨', '🏃']
+const COLOR_SWATCHES = [
+  { value: '#e34432', label: 'Vermelho' },
+  { value: '#cf3520', label: 'Laranja' },
+  { value: '#0f66ae', label: 'Azul' },
+  { value: '#4c7a45', label: 'Verde' },
+]
 
 const METRIC_TYPES = [
   { value: 'binary', label: 'Binário', desc: 'Feito / Não feito' },
@@ -44,7 +50,7 @@ export function HabitForm({ defaultValues, areas, objectives, onSubmit, loading 
       metric_config: {},
       frequency: 'daily',
       frequency_config: {},
-      color: '#246fe0',
+      color: '#e34432',
       icon: null,
       is_active: true,
       order_index: 0,
@@ -54,6 +60,7 @@ export function HabitForm({ defaultValues, areas, objectives, onSubmit, loading 
 
   const selectedAreaId = useWatch({ control, name: 'area_id' })
   const selectedIcon = watch('icon')
+  const selectedColor = watch('color')
   const isActive = watch('is_active')
   const metricType = watch('metric_type')
 
@@ -62,7 +69,7 @@ export function HabitForm({ defaultValues, areas, objectives, onSubmit, loading 
     : objectives
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
       <Input
         label="Título"
         placeholder="Ex: Meditar 10 min, Beber água..."
@@ -70,62 +77,52 @@ export function HabitForm({ defaultValues, areas, objectives, onSubmit, loading 
         {...register('title')}
       />
 
-      <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-todoist-charcoal">Descrição</label>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[11px] font-semibold uppercase tracking-[0.06em] text-subtle-ash">
+          Descrição
+        </label>
         <textarea
-          className="input-field resize-none"
+          className="w-full min-h-[64px] resize-none p-3 bg-paper border border-soft-gray rounded-default text-sm-2 text-charcoal placeholder:text-dusty-sage focus:outline-none focus:border-action-red focus:shadow-[0_0_0_3px_rgba(227,68,50,0.08)]"
           rows={2}
           placeholder="Descreva este hábito..."
           {...register('description')}
         />
-        {errors.description && (
-          <p className="text-xs text-todoist-red">{errors.description.message}</p>
-        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-todoist-charcoal">Área</label>
-          <select
-            className="input-field"
-            {...register('area_id')}
-            onChange={(e) => {
-              setValue('area_id', e.target.value || null)
-              setValue('objective_id', null)
-            }}
-          >
-            <option value="">Sem área</option>
-            {areas.map((area) => (
-              <option key={area.id} value={area.id}>
-                {area.icon ? `${area.icon} ` : ''}{area.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-todoist-charcoal">Objetivo</label>
-          <select className="input-field" {...register('objective_id')}>
-            <option value="">Sem objetivo</option>
-            {filteredObjectives.map((obj) => (
-              <option key={obj.id} value={obj.id}>
-                {obj.title}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          label="Área"
+          {...register('area_id', {
+            setValueAs: (v: string) => v || null,
+            onChange: () => setValue('objective_id', null),
+          })}
+          options={[
+            { value: '', label: 'Sem área' },
+            ...areas.map((a) => ({ value: a.id, label: a.name })),
+          ]}
+        />
+        <Select
+          label="Objetivo"
+          {...register('objective_id', { setValueAs: (v: string) => v || null })}
+          options={[
+            { value: '', label: 'Sem objetivo' },
+            ...filteredObjectives.map((o) => ({ value: o.id, label: o.title })),
+          ]}
+        />
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-todoist-charcoal">Tipo de métrica</span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-subtle-ash">
+          Tipo de métrica
+        </span>
         <div className="grid grid-cols-2 gap-2">
           {METRIC_TYPES.map((mt) => (
             <label
               key={mt.value}
-              className={`flex flex-col gap-0.5 p-2.5 rounded border cursor-pointer transition-all ${
+              className={`flex flex-col gap-0.5 p-3 rounded-default border cursor-pointer transition-all ${
                 metricType === mt.value
-                  ? 'border-todoist-red bg-todoist-red-light'
-                  : 'border-todoist-gray-300 hover:border-todoist-gray-400'
+                  ? 'border-action-red bg-tint-red'
+                  : 'border-soft-gray hover:border-charcoal'
               }`}
             >
               <input
@@ -134,87 +131,90 @@ export function HabitForm({ defaultValues, areas, objectives, onSubmit, loading 
                 className="sr-only"
                 {...register('metric_type')}
               />
-              <span className="text-sm font-medium text-todoist-charcoal">{mt.label}</span>
-              <span className="text-xs text-todoist-gray-500">{mt.desc}</span>
+              <span className="text-sm-2 font-semibold text-charcoal">{mt.label}</span>
+              <span className="text-xs text-subtle-ash">{mt.desc}</span>
             </label>
           ))}
         </div>
-        {errors.metric_type && (
-          <p className="text-xs text-todoist-red">{errors.metric_type.message}</p>
-        )}
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-todoist-charcoal">Frequência</label>
-        <select className="input-field" {...register('frequency')}>
-          <option value="daily">Diário</option>
-          <option value="weekly">Semanal</option>
-          <option value="monthly">Mensal</option>
-          <option value="custom">Personalizado</option>
-        </select>
-      </div>
+      <Select
+        label="Frequência"
+        {...register('frequency')}
+        options={[
+          { value: 'daily', label: 'Diário' },
+          { value: 'weekly', label: 'Semanal' },
+          { value: 'monthly', label: 'Mensal' },
+          { value: 'custom', label: 'Personalizado' },
+        ]}
+      />
 
       <Controller
         name="color"
         control={control}
         render={({ field }) => (
-          <ColorPicker label="Cor" value={field.value} onChange={field.onChange} />
+          <div className="flex flex-col gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-subtle-ash">
+              Cor
+            </span>
+            <div className="flex gap-2">
+              {COLOR_SWATCHES.map((c) => (
+                <button
+                  key={c.value}
+                  type="button"
+                  onClick={() => field.onChange(c.value)}
+                  aria-label={c.label}
+                  className={`w-10 h-10 rounded-default transition-all ${
+                    selectedColor === c.value
+                      ? 'ring-2 ring-offset-2 ring-charcoal scale-105'
+                      : 'hover:scale-105'
+                  }`}
+                  style={{ backgroundColor: c.value }}
+                />
+              ))}
+            </div>
+          </div>
         )}
       />
 
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-todoist-charcoal">Ícone</span>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setValue('icon', null)}
-            className={`w-8 h-8 rounded flex items-center justify-center text-xs border transition-all ${
-              !selectedIcon
-                ? 'border-todoist-red bg-todoist-red-light text-todoist-red'
-                : 'border-todoist-gray-300 hover:border-todoist-gray-400 text-todoist-gray-500'
-            }`}
-          >
-            —
-          </button>
-          {EMOJI_LIST.map((emoji) => (
-            <button
-              key={emoji}
-              type="button"
-              onClick={() => setValue('icon', emoji)}
-              className={`w-8 h-8 rounded flex items-center justify-center text-base border transition-all ${
-                selectedIcon === emoji
-                  ? 'border-todoist-red bg-todoist-red-light'
-                  : 'border-todoist-gray-300 hover:border-todoist-gray-400'
-              }`}
-            >
-              {emoji}
-            </button>
-          ))}
+      <div className="flex flex-col gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-subtle-ash">
+          Ícone
+        </span>
+        <div className="grid grid-cols-6 gap-2">
+          {HABIT_ICON_OPTIONS.map((opt) => {
+            const selected = selectedIcon === opt.name
+            return (
+              <button
+                key={opt.name}
+                type="button"
+                onClick={() => setValue('icon', opt.name)}
+                aria-label={opt.label}
+                title={opt.label}
+                className={`w-10 h-10 rounded-default flex items-center justify-center transition-all ${
+                  selected
+                    ? 'bg-tint-red text-action-red ring-1 ring-action-red'
+                    : 'bg-bg-muted text-charcoal hover:bg-bg-muted-strong'
+                }`}
+              >
+                <HabitIcon name={opt.name} size={18} />
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-todoist-charcoal">Ativo</span>
-        <button
-          type="button"
-          onClick={() => setValue('is_active', !isActive)}
-          className={`relative w-10 h-5 rounded-full transition-colors ${
-            isActive ? 'bg-todoist-red' : 'bg-todoist-gray-300'
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-              isActive ? 'translate-x-5' : 'translate-x-0'
-            }`}
-          />
-        </button>
+      <div className="flex items-center justify-between py-2">
+        <div>
+          <p className="text-sm-2 font-semibold text-charcoal">Ativo</p>
+          <p className="text-xs text-subtle-ash">Aparecer no dashboard e rastreamento</p>
+        </div>
+        <Toggle checked={isActive} onChange={(v) => setValue('is_active', v)} />
       </div>
 
-      <div className="flex justify-end gap-2 pt-2">
-        <Button type="submit" loading={loading}>
-          Salvar
-        </Button>
-      </div>
+      <Button type="submit" loading={loading} fullWidth>
+        Salvar
+      </Button>
     </form>
   )
 }

@@ -2,16 +2,34 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import {
+  Home,
+  CheckSquare,
+  Repeat,
+  Target,
+  FolderOpen,
+  BarChart3,
+  Settings,
+  LogOut,
+  CheckCircle2,
+  type LucideIcon,
+} from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 
-const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Today', icon: '☀️' },
-  { href: '/tracking', label: 'Tracking', icon: '✅' },
-  { href: '/habits', label: 'Habits', icon: '🔄' },
-  { href: '/objectives', label: 'Objectives', icon: '🎯' },
-  { href: '/areas', label: 'Areas', icon: '🗂️' },
-  { href: '/insights', label: 'Insights', icon: '📊' },
-  { href: '/settings', label: 'Settings', icon: '⚙️' },
+interface NavItem {
+  href: string
+  label: string
+  Icon: LucideIcon
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { href: '/dashboard', label: 'Hoje', Icon: Home },
+  { href: '/tracking', label: 'Rastreamento', Icon: CheckSquare },
+  { href: '/habits', label: 'Hábitos', Icon: Repeat },
+  { href: '/objectives', label: 'Objetivos', Icon: Target },
+  { href: '/areas', label: 'Áreas', Icon: FolderOpen },
+  { href: '/insights', label: 'Estatísticas', Icon: BarChart3 },
+  { href: '/settings', label: 'Configurações', Icon: Settings },
 ]
 
 export function Sidebar() {
@@ -20,46 +38,46 @@ export function Sidebar() {
 
   return (
     <aside className="hidden md:flex flex-col w-56 min-h-screen bg-todoist-sidebar-bg py-6 px-3">
-      {/* Logo */}
-      <div className="px-3 mb-6 flex items-center gap-2">
-        <div className="w-7 h-7 bg-todoist-red rounded-lg flex items-center justify-center flex-shrink-0">
-          <span className="text-white text-sm font-bold">H</span>
+      <div className="px-3 mb-6 flex items-center gap-2.5">
+        <div className="w-8 h-8 bg-action-red rounded-[8px] flex items-center justify-center flex-shrink-0 text-white">
+          <CheckCircle2 size={18} strokeWidth={2} />
         </div>
-        <span className="text-white font-semibold text-base">Habits</span>
+        <span className="text-white font-display font-semibold text-base">Habits</span>
       </div>
 
-      {/* Nav */}
-      <nav className="flex flex-col gap-1 flex-1">
-        {NAV_ITEMS.map((item) => {
+      <nav className="flex flex-col gap-0.5 flex-1">
+        {NAV_ITEMS.map(({ href, label, Icon }) => {
           const active =
-            pathname === item.href ||
-            (item.href !== '/dashboard' && pathname.startsWith(item.href))
+            pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
           return (
             <Link
-              key={item.href}
-              href={item.href}
-              className={active ? 'sidebar-item-active' : 'sidebar-item-inactive'}
+              key={href}
+              href={href}
+              className={`flex items-center gap-3 px-3 py-2 rounded-default text-sm-2 font-medium transition-colors duration-150 ${
+                active
+                  ? 'bg-todoist-sidebar-item text-white'
+                  : 'text-dusty-sage hover:text-white hover:bg-todoist-sidebar-item'
+              }`}
             >
-              <span className="text-base leading-none">{item.icon}</span>
-              <span>{item.label}</span>
+              <Icon size={18} strokeWidth={active ? 2 : 1.5} />
+              <span>{label}</span>
             </Link>
           )
         })}
       </nav>
 
-      {/* User footer */}
       <div className="mt-4 border-t border-todoist-sidebar-item pt-4 px-1">
-        <div className="flex items-center gap-2 px-2 py-2 mb-1">
-          <div className="w-6 h-6 rounded-full bg-todoist-red text-white flex items-center justify-center text-xs font-semibold flex-shrink-0">
+        <div className="flex items-center gap-2.5 px-2 py-2 mb-1">
+          <div className="w-7 h-7 rounded-full bg-action-red text-white flex items-center justify-center text-xs font-display font-semibold flex-shrink-0">
             {avatarInitial}
           </div>
-          <span className="text-xs text-todoist-gray-400 truncate">{displayName}</span>
+          <span className="text-xs text-dusty-sage truncate">{displayName}</span>
         </div>
         <button
           onClick={signOut}
-          className="sidebar-item-inactive w-full text-left"
+          className="flex items-center gap-3 px-3 py-2 rounded-default text-sm-2 font-medium w-full text-left text-dusty-sage hover:text-white hover:bg-todoist-sidebar-item transition-colors duration-150"
         >
-          <span>🚪</span>
+          <LogOut size={18} strokeWidth={1.5} />
           <span>Sair</span>
         </button>
       </div>

@@ -1,14 +1,74 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { ChevronRight, Lock, Link2, Link2Off, LogOut, ExternalLink } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useProfile } from '@/hooks/useProfile'
 import { supabase } from '@/lib/supabase'
-import { Input } from '@/components/ui/Input'
-import { Button } from '@/components/ui/Button'
-import { Modal } from '@/components/ui/Modal'
-import { ErrorMessage } from '@/components/ui/ErrorMessage'
-import { Toast } from '@/components/ui/Toast'
+import { Input, Button, Modal, ErrorMessage, Toast, ScreenHeader } from '@/components/ui'
+
+interface SectionProps {
+  title: string
+  children: React.ReactNode
+}
+
+function Section({ title, children }: SectionProps) {
+  return (
+    <section className="mb-5">
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-subtle-ash mb-2 px-1">
+        {title}
+      </h2>
+      <div className="bg-paper border border-soft-gray rounded-card overflow-hidden">
+        {children}
+      </div>
+    </section>
+  )
+}
+
+interface RowProps {
+  icon?: React.ReactNode
+  label: string
+  hint?: string
+  onClick?: () => void
+  trailing?: React.ReactNode
+  destructive?: boolean
+}
+
+function Row({ icon, label, hint, onClick, trailing, destructive }: RowProps) {
+  const content = (
+    <div className="flex items-center gap-3 py-3.5 px-4">
+      {icon && (
+        <span className={`shrink-0 ${destructive ? 'text-action-red' : 'text-charcoal'}`}>
+          {icon}
+        </span>
+      )}
+      <div className="flex-1 min-w-0">
+        <p
+          className={`text-sm-2 font-medium ${
+            destructive ? 'text-action-red' : 'text-charcoal'
+          }`}
+        >
+          {label}
+        </p>
+        {hint && <p className="text-xs text-subtle-ash mt-0.5">{hint}</p>}
+      </div>
+      {trailing ?? (onClick && <ChevronRight size={16} className="text-dusty-sage shrink-0" />)}
+    </div>
+  )
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="block w-full text-left hover:bg-[rgba(37,34,30,0.04)] transition-colors border-b border-soft-gray last:border-b-0"
+      >
+        {content}
+      </button>
+    )
+  }
+  return <div className="border-b border-soft-gray last:border-b-0">{content}</div>
+}
 
 // ─── Change Password Modal ────────────────────────────────────────────────────
 
@@ -19,39 +79,27 @@ function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => 
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  function resetState() {
+  function handleClose() {
     setNewPassword('')
     setConfirmPassword('')
     setError(null)
     setSuccess(false)
-  }
-
-  function handleClose() {
-    resetState()
     onClose()
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-
-    if (newPassword.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres.')
-      return
-    }
-    if (newPassword !== confirmPassword) {
-      setError('As senhas não coincidem.')
-      return
-    }
-
+    if (newPassword.length < 6) return setError('Senha deve ter pelo menos 6 caracteres.')
+    if (newPassword !== confirmPassword) return setError('Senhas não coincidem.')
     setLoading(true)
     try {
       const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
       if (updateError) throw new Error(updateError.message)
       setSuccess(true)
-      setTimeout(() => { handleClose() }, 1500)
+      setTimeout(handleClose, 1500)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao alterar senha.')
+      setError(err instanceof Error ? err.message : 'Erro')
     } finally {
       setLoading(false)
     }
@@ -60,8 +108,8 @@ function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => 
   return (
     <Modal open={open} onClose={handleClose} title="Alterar senha" size="sm">
       {success ? (
-        <p className="text-todoist-green text-sm font-medium text-center py-2">
-          ✓ Senha alterada com sucesso!
+        <p className="text-success-green text-sm font-medium text-center py-2">
+          Senha alterada com sucesso!
         </p>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -76,19 +124,19 @@ function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => 
             required
           />
           <Input
-            label="Confirmar senha"
+            label="Confirmar"
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Repita a nova senha"
             required
           />
-          <div className="flex gap-2 justify-end">
-            <Button type="button" variant="secondary" onClick={handleClose} disabled={loading}>
+          <div className="flex gap-2">
+            <Button type="button" variant="secondary" onClick={handleClose} disabled={loading} fullWidth>
               Cancelar
             </Button>
-            <Button type="submit" loading={loading}>
-              Salvar senha
+            <Button type="submit" loading={loading} fullWidth>
+              Salvar
             </Button>
           </div>
         </form>
@@ -103,24 +151,14 @@ export default function SettingsPage() {
   const { user, signOut, avatarInitial } = useAuth()
   const { profile, loading, isError, updateProfile, isUpdating } = useProfile()
 
-  // Profile section state
   const [name, setName] = useState('')
-  const [profileError, setProfileError] = useState<string | null>(null)
   const [profileToast, setProfileToast] = useState<string | null>(null)
-
-  // Password modal
   const [passwordModalOpen, setPasswordModalOpen] = useState(false)
-
-  // Todoist section state
+  const [todoistModalOpen, setTodoistModalOpen] = useState(false)
   const [todoistToken, setTodoistToken] = useState('')
-  const [todoistError, setTodoistError] = useState<string | null>(null)
   const [todoistToast, setTodoistToast] = useState<string | null>(null)
   const [savingTodoist, setSavingTodoist] = useState(false)
 
-  // Sign out state
-  const [signingOut, setSigningOut] = useState(false)
-
-  // Sync name and todoist token from profile
   useEffect(() => {
     if (profile) {
       setName(profile.name ?? '')
@@ -128,58 +166,49 @@ export default function SettingsPage() {
     }
   }, [profile])
 
-  async function handleSaveProfile(e: React.FormEvent) {
-    e.preventDefault()
-    setProfileError(null)
+  async function handleSaveProfile() {
     try {
       await updateProfile({ name: name.trim() || null })
-      setProfileToast('Perfil salvo com sucesso!')
+      setProfileToast('Perfil salvo!')
     } catch (err) {
-      setProfileError(err instanceof Error ? err.message : 'Erro ao salvar perfil.')
+      setProfileToast(err instanceof Error ? err.message : 'Erro ao salvar')
     }
   }
 
-  async function handleSaveTodoist(e: React.FormEvent) {
-    e.preventDefault()
-    setTodoistError(null)
+  async function handleSaveTodoist() {
     setSavingTodoist(true)
     try {
       await updateProfile({ todoist_access_token: todoistToken.trim() || null })
-      setTodoistToast('Token Todoist salvo!')
+      setTodoistToast('Token salvo!')
+      setTodoistModalOpen(false)
     } catch (err) {
-      setTodoistError(err instanceof Error ? err.message : 'Erro ao salvar token.')
+      setTodoistToast(err instanceof Error ? err.message : 'Erro')
     } finally {
       setSavingTodoist(false)
     }
   }
 
   async function handleDisconnectTodoist() {
-    setTodoistError(null)
     setSavingTodoist(true)
     try {
       await updateProfile({ todoist_access_token: null })
       setTodoistToken('')
       setTodoistToast('Todoist desconectado.')
     } catch (err) {
-      setTodoistError(err instanceof Error ? err.message : 'Erro ao desconectar.')
+      setTodoistToast(err instanceof Error ? err.message : 'Erro')
     } finally {
       setSavingTodoist(false)
     }
   }
 
-  async function handleSignOut() {
-    setSigningOut(true)
-    await signOut()
-  }
-
-  const isConnected = !!(profile?.todoist_access_token)
+  const isConnected = !!profile?.todoist_access_token
   const displayInitial = name ? name[0].toUpperCase() : avatarInitial
 
   if (loading) {
     return (
       <main className="p-4 md:p-6 max-w-2xl mx-auto">
         <div className="flex justify-center py-16">
-          <div className="w-6 h-6 border-2 border-todoist-red border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-action-red border-t-transparent rounded-full animate-spin" />
         </div>
       </main>
     )
@@ -188,134 +217,125 @@ export default function SettingsPage() {
   if (isError) {
     return (
       <main className="p-4 md:p-6 max-w-2xl mx-auto">
-        <ErrorMessage message="Erro ao carregar perfil. Tente recarregar a página." />
+        <ErrorMessage message="Erro ao carregar perfil. Tente recarregar." />
       </main>
     )
   }
 
   return (
-    <main className="p-4 md:p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-semibold text-todoist-charcoal mb-6">Configurações</h1>
+    <main className="p-4 md:p-6 max-w-2xl mx-auto pb-24">
+      <ScreenHeader title="Configurações" />
 
-      {/* ── Perfil ── */}
-      <section className="card mb-4">
-        <h2 className="text-base font-semibold text-todoist-charcoal mb-4">Perfil</h2>
-
-        <div className="flex items-center gap-4 mb-5">
-          <div className="w-14 h-14 rounded-full bg-todoist-red text-white flex items-center justify-center text-2xl font-semibold flex-shrink-0">
-            {displayInitial}
-          </div>
-          <div>
-            <p className="font-medium text-todoist-charcoal">{name || 'Sem nome'}</p>
-            <p className="text-sm text-todoist-gray-500">{user?.email}</p>
-          </div>
+      {/* Profile card */}
+      <div className="bg-peach rounded-[14px] p-4 flex items-center gap-3 mb-6">
+        <div className="w-[52px] h-[52px] rounded-full bg-charcoal text-paper flex items-center justify-center font-display text-xl font-bold shrink-0">
+          {displayInitial}
         </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-base-2 font-semibold text-charcoal truncate">{name || 'Sem nome'}</p>
+          <p className="text-xs text-subtle-ash truncate">{user?.email}</p>
+        </div>
+      </div>
 
-        <form onSubmit={handleSaveProfile} className="flex flex-col gap-4">
-          {profileError && <ErrorMessage message={profileError} />}
-          <Input
-            label="Nome"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Seu nome"
-          />
-          <Input
-            label="E-mail"
-            value={user?.email ?? ''}
-            readOnly
-            disabled
-            hint="O e-mail não pode ser alterado aqui."
-          />
-          <div>
-            <Button type="submit" loading={isUpdating}>
-              Salvar perfil
-            </Button>
-          </div>
-        </form>
-      </section>
-
-      {/* ── Segurança ── */}
-      <section className="card mb-4">
-        <h2 className="text-base font-semibold text-todoist-charcoal mb-1">Segurança</h2>
-        <p className="text-sm text-todoist-gray-500 mb-4">
-          Altere sua senha de acesso à conta.
-        </p>
-        <Button variant="secondary" onClick={() => setPasswordModalOpen(true)}>
-          Alterar senha
-        </Button>
-      </section>
-
-      {/* ── Todoist ── */}
-      <section className="card mb-4">
-        <h2 className="text-base font-semibold text-todoist-charcoal mb-1">Integração Todoist</h2>
-        <p className="text-sm text-todoist-gray-500 mb-4">
-          Conecte seu Todoist para sincronizar hábitos como tarefas.
-        </p>
-
-        {todoistError && <div className="mb-4"><ErrorMessage message={todoistError} /></div>}
-
-        {isConnected ? (
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="flex items-center gap-1.5 text-sm text-todoist-green font-medium">
-              <span>✅</span> Conectado ao Todoist
-            </span>
-            <Button
-              variant="tertiary"
-              size="sm"
-              onClick={handleDisconnectTodoist}
-              loading={savingTodoist}
-            >
-              Desconectar
-            </Button>
-          </div>
-        ) : (
-          <form onSubmit={handleSaveTodoist} className="flex flex-col gap-4">
-            <Input
-              label="API Token"
-              type="password"
-              value={todoistToken}
-              onChange={(e) => setTodoistToken(e.target.value)}
-              placeholder="Cole seu token aqui"
-              hint="Encontre seu token em Todoist → Configurações → Integrações → Developer"
+      <Section title="Conta">
+        <Row
+          label="Nome"
+          trailing={
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={handleSaveProfile}
+              className="text-sm-2 text-charcoal bg-transparent text-right focus:outline-none w-40"
+              disabled={isUpdating}
+              placeholder="Seu nome"
             />
-            <div className="flex items-center gap-4 flex-wrap">
-              <Button type="submit" loading={savingTodoist} disabled={!todoistToken.trim()}>
-                Salvar token
-              </Button>
-              <a
-                href="https://todoist.com/app/settings/integrations/developer"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-todoist-blue hover:underline"
-              >
-                Onde encontrar meu token? →
-              </a>
-            </div>
-          </form>
+          }
+        />
+        <Row label="E-mail" hint={user?.email ?? ''} />
+        <Row
+          icon={<Lock size={18} strokeWidth={1.5} />}
+          label="Alterar senha"
+          onClick={() => setPasswordModalOpen(true)}
+        />
+      </Section>
+
+      <Section title="Integrações">
+        {isConnected ? (
+          <>
+            <Row
+              icon={<Link2 size={18} strokeWidth={1.5} />}
+              label="Todoist"
+              hint="Conectado"
+              onClick={() => setTodoistModalOpen(true)}
+            />
+            <Row
+              icon={<Link2Off size={18} strokeWidth={1.5} />}
+              label="Desconectar Todoist"
+              destructive
+              onClick={handleDisconnectTodoist}
+            />
+          </>
+        ) : (
+          <Row
+            icon={<Link2 size={18} strokeWidth={1.5} />}
+            label="Conectar Todoist"
+            hint="Sincronize hábitos como tarefas"
+            onClick={() => setTodoistModalOpen(true)}
+          />
         )}
-      </section>
+      </Section>
 
-      {/* ── Dados ── */}
-      <section className="card">
-        <h2 className="text-base font-semibold text-todoist-charcoal mb-1">Dados da conta</h2>
-        <p className="text-sm text-todoist-gray-500 mb-4">
-          Encerre sua sessão no aplicativo.
+      <Section title="Conta">
+        <Row
+          icon={<LogOut size={18} strokeWidth={1.5} />}
+          label="Sair da conta"
+          destructive
+          onClick={signOut}
+        />
+      </Section>
+
+      <p className="text-center text-xs text-dusty-sage mt-8">Habits · versão 1.0.0</p>
+
+      <ChangePasswordModal open={passwordModalOpen} onClose={() => setPasswordModalOpen(false)} />
+
+      <Modal
+        open={todoistModalOpen}
+        onClose={() => setTodoistModalOpen(false)}
+        title="Integração Todoist"
+        size="md"
+      >
+        <p className="text-sm text-subtle-ash mb-4">
+          Cole seu token de API do Todoist para sincronizar hábitos como tarefas recorrentes.
         </p>
-        <Button
-          variant="primary"
-          className="bg-todoist-red hover:bg-todoist-red-dark"
-          onClick={handleSignOut}
-          loading={signingOut}
+        <Input
+          label="API Token"
+          type="password"
+          value={todoistToken}
+          onChange={(e) => setTodoistToken(e.target.value)}
+          placeholder="Cole seu token aqui"
+        />
+        <a
+          href="https://todoist.com/app/settings/integrations/developer"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-link-orange hover:underline mt-2 inline-flex items-center gap-1"
         >
-          Sair da conta
-        </Button>
-      </section>
-
-      {/* ── Modals & Toasts ── */}
-      <ChangePasswordModal
-        open={passwordModalOpen}
-        onClose={() => setPasswordModalOpen(false)}
-      />
+          Onde encontrar meu token? <ExternalLink size={11} />
+        </a>
+        <div className="flex gap-2 mt-5">
+          <Button variant="secondary" onClick={() => setTodoistModalOpen(false)} fullWidth>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSaveTodoist}
+            loading={savingTodoist}
+            disabled={!todoistToken.trim()}
+            fullWidth
+          >
+            Salvar token
+          </Button>
+        </div>
+      </Modal>
 
       {profileToast && (
         <Toast message={profileToast} type="success" onClose={() => setProfileToast(null)} />
